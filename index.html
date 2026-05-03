@@ -531,24 +531,77 @@
                 }, 900);
             });
 
+            // ---------- TWO SONGS: cycle on each press ----------
+            // Define your two songs (update the second file names!)
+            const songList = [
+                {
+                    name: 'Blue',
+                    srcs: [
+                        { src: 'Blue.mp3', type: 'audio/mpeg' },
+                        { src: 'Blue.ogg', type: 'audio/ogg' }
+                    ]
+                },
+                {
+                    name: 'Sundari',
+                    srcs: [
+                        { src: 'Sundari.mp3', type: 'audio/mpeg' },   // <-- CHANGE THIS
+                        { src: 'Sundari.ogg', type: 'audio/ogg' }      // <-- or delete this line if no .ogg
+                    ]
+                }
+            ];
+            let currentSongIndex = 0;  // 0 = Blue, 1 = Second Song
+
+            // Helper to switch song while preserving play state
+            function switchToSong(index) {
+                const song = songList[index];
+                if (!song) return;
+                const wasPlaying = !bgMusic.paused;
+                // clear all source elements
+                while (bgMusic.firstChild) {
+                    bgMusic.removeChild(bgMusic.firstChild);
+                }
+                // add new sources
+                song.srcs.forEach(s => {
+                    const source = document.createElement('source');
+                    source.src = s.src;
+                    source.type = s.type;
+                    bgMusic.appendChild(source);
+                });
+                bgMusic.load();
+                if (wasPlaying) {
+                    bgMusic.play().catch(e => console.log("autoplay blocked"));
+                }
+                currentSongIndex = index;
+                musicTooltip.textContent = `🎵 Now: ${song.name}`;
+                setTimeout(() => {
+                    if (musicTooltip.textContent === `🎵 Now: ${song.name}`)
+                        musicTooltip.textContent = wasPlaying ? 'Playing your song ✨' : 'Play your song 💕';
+                }, 2000);
+            }
+
+            // The music button: every press cycles to the next song AND plays it
             musicToggle.addEventListener('click', (e) => {
                 e.stopPropagation();
                 if (!bgMusic) return;
-                if (musicPlaying) {
-                    bgMusic.pause();
-                    musicPlaying = false;
-                    musicToggle.classList.remove('playing');
-                    musicToggle.textContent = '🎵';
-                    musicTooltip.textContent = 'Play your song 💕';
-                } else {
+                // cycle to next song (0 -> 1 -> 0 -> 1 ...)
+                const nextIndex = (currentSongIndex + 1) % songList.length;
+                switchToSong(nextIndex);
+                // ensure it's playing
+                if (bgMusic.paused) {
                     bgMusic.play().then(() => {
                         musicPlaying = true;
                         musicToggle.classList.add('playing');
                         musicToggle.textContent = '🎶';
-                        musicTooltip.textContent = 'Playing your song ✨';
                     }).catch(() => {});
+                } else {
+                    musicPlaying = true;
+                    musicToggle.classList.add('playing');
+                    musicToggle.textContent = '🎶';
                 }
             });
+
+            // Also fix envelope auto-play: it should play the current song (Blue initially)
+            // The envelope code already calls bgMusic.play() – no change needed.
 
             // Petals
             const petalsContainer = document.getElementById('petals-container');
